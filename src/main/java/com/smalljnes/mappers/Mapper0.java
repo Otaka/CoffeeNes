@@ -18,7 +18,5 @@ public class Mapper0 extends AbstractMapper{
     @Override
     public String toString() {
         return "NROM";
-        
     }
-
 }

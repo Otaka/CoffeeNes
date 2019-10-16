@@ -51,6 +51,4 @@ public class Mapper2 extends AbstractMapper {
     public String toString() {
         return "UxROM";
     }
-    
-    
 }

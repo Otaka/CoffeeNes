@@ -7,6 +7,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 /**
  * @author Dmitry
@@ -64,6 +66,8 @@ public class Cartridge {
                 return new Mapper2(romData);
             case 3:
                 return new Mapper3(romData);
+            case 4:
+                return new Mapper4(romData);
             default:
                 throw new IllegalArgumentException("Mapper [" + mapperNumber + "] does not supported");
         }
@@ -91,7 +95,14 @@ public class Cartridge {
         if (fileName.lastIndexOf(".") != -1) {
             fileName = fileName.substring(0, fileName.lastIndexOf("."));
         }
-        load(new BufferedInputStream(new FileInputStream(file)), fileName);
+        InputStream stream=new FileInputStream(file);
+        if(file.getName().endsWith("zip")){
+            ZipInputStream zipStream=new ZipInputStream(stream);
+            ZipEntry entry=zipStream.getNextEntry();
+            System.out.println("Open file ["+entry.getName()+"] from zip archive");
+            stream=zipStream;
+        }
+        load(new BufferedInputStream(stream), fileName);
     }
 
     private byte[] readInputStreamFully(InputStream stream) throws IOException {

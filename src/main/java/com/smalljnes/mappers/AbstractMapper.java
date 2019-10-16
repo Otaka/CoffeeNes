@@ -50,7 +50,11 @@ public abstract class AbstractMapper {
         if (address >= 0x8000) {
             return prg[prgMap[(address - 0x8000) / 0x2000] + ((address - 0x8000) % 0x2000)];
         } else {
-            return prgRam[address - 0x6000];
+            int tAddress=(address - 0x6000);
+            if(tAddress<0 ||tAddress>=prgRam.length){
+                return 0;
+            }
+            return prgRam[tAddress];
         }
     }
 

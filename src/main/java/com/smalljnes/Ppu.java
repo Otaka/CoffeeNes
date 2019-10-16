@@ -363,7 +363,7 @@ public class Ppu {
               //  print("PPU:PXL x:" + x + " y:" + scanline + "SPR");
             }
             int paletteAddress=rd(0x3F00 + (rendering() ? palette : 0));
-            pixels[scanline * 256 + x] = nesPalette[paletteAddress];
+            pixels[scanline * 256 + x] = nesPalette[paletteAddress&0x3F];
         }
         // Perform background shifts:
         bgShiftL <<= 1;
@@ -499,7 +499,7 @@ public class Ppu {
     }
 
     void step() {
-      //  print("PPU:STEP "+scanline+":"+dot);
+        //print("PPU:STEP "+scanline+":"+dot);
         if (scanline <= 239) {
             scanlineCycleVisible(false);
         } else if (scanline == 240) {
@@ -612,14 +612,14 @@ public class Ppu {
         return res;
     }
 
-   /* boolean printStatusDisabled;
+    boolean printStatusDisabled;
 
     void print(String str) {
-        if (frameCounter < 0) {
+        if (frameCounter < 100) {
             nes.getCpu().printStatus("X:" + dot + " scnl:" + scanline + " vadr.x:" + vAddr.r + " " + str);
         } else if (printStatusDisabled == false) {
             nes.getCpu().disableDebug();
             printStatusDisabled = true;
         }
-    }*/
+    }
 }

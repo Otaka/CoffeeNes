@@ -39,13 +39,15 @@ public class TestWindow extends JFrame {
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         nes = new Nes();
         Cartridge cartridge = new Cartridge();
-        //cartridge.load(TestWindow.class.getResourceAsStream("/com/smalljnes/resources/nestest.nes"), "NesTest");
-        //cartridge.load(new File("f:\\temp\\1_nes\\tutorial\\tutorial5\\game.nes"));
-        cartridge.load(new File("D:\\temp\\1_nes\\roms\\games\\Super Mario Bros (E).nes"));
-        //cartridge.load(new File("d:\\temp\\emu\\nes\\Duck Tales 2 (U) [!].nes"));
-        //cartridge.load(new File("d:\\temp\\emu\\nes\\Chip 'n Dale Rescue Rangers 2 (U) [!].nes"));
-        //cartridge.load(new File("D:\\temp\\1_nes\\roms\\games\\Little Mermaid, The (USA).nes"));
-        //cartridge.load(new File("D:\\temp\\1_nes\\roms\\games\\Battletoads & Double Dragon - The Ultimate Team (U) [t1].nes"));
+
+        try {
+            cartridge.load(new File("h:\\Games\\Emulation\\nes\\games\\Little N Mermaid The (Little Mermaid Hack).nes"));
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            System.exit(1);
+            return;
+        }
+
         nes.insertCartridge(cartridge);
         nes.setOnDrawFrameEvent(new OnDrawFrame() {
             int[] pixelsData = new int[256 * 240 * 3];
@@ -67,8 +69,8 @@ public class TestWindow extends JFrame {
         addKeyListener(new KeyAdapter() {
             Map<Integer, Integer> buttonsInfo = new HashMap<Integer, Integer>() {
                 {
-                    put(KeyEvent.VK_J, 0);
-                    put(KeyEvent.VK_H, 1);
+                    put(KeyEvent.VK_H, 0);
+                    put(KeyEvent.VK_G, 1);
                     put(KeyEvent.VK_BACK_SPACE, 2);
                     put(KeyEvent.VK_ENTER, 3);
                     put(KeyEvent.VK_W, 4);

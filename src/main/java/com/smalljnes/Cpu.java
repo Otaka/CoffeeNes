@@ -31,8 +31,13 @@ public class Cpu {
     int remainingCycles = 0;
 
     public void setNmi(boolean nmi) {
-     //   printStatus("C:setNmi");
+        printStatus("C:setNmi");
         this.nmi = nmi;
+    }
+
+    public void setIrq(boolean value) {
+        printStatus("C:setIrq");
+        this.irq = value;
     }
 
     public Apu getApu() {
@@ -69,6 +74,7 @@ public class Cpu {
 
     public void executeOneInstruction() {
         int opcode = read((PC++) & 0xFFFF, false) & 0xFF;
+        //PC++;
         switch (opcode) {
             case 0x00:
                 interrupt(BRK_INTERRUPT);
@@ -233,7 +239,7 @@ public class Cpu {
                 eor(absoluteWithXAddressing(false));
                 break;
             case 0x5E:
-                lsr(absoluteWithXAddressing(true));
+                lsr(_abx());
                 break;
             case 0x60:
                 rts();
@@ -321,7 +327,7 @@ public class Cpu {
                 br(C, 0);
                 break;
             case 0x91:
-                st(A, indirectZYAddressing(true));
+                stIZY(A);
                 break;
             case 0x94:
                 st(Y, zeroPageWithXAddressing());
@@ -336,13 +342,13 @@ public class Cpu {
                 trToA(Y);
                 break;
             case 0x99:
-                st(A, absoluteWithYAddressing(true));
+                stAbsY(A);
                 break;
             case 0x9A:
                 trX2S();
                 break;
             case 0x9D:
-                st(A, absoluteWithXAddressing(true));
+                stAbsX(A);
                 break;
             case 0xA0:
                 ldY(immediateAddressing());
@@ -470,7 +476,7 @@ public class Cpu {
                 cmp(A, absoluteWithXAddressing(false));
                 break;
             case 0xDE:
-                dec(absoluteWithXAddressing(true));
+                dec(_abx());
                 break;
             case 0xE0:
                 cmp(X, immediateAddressing());
@@ -891,6 +897,11 @@ public class Cpu {
         int address = immediate16Addressing();
         return read16(address, false);
     }
+    
+    private int _abx(){
+        cpuTick();
+        return absoluteAddressing()+(X&0xFF);
+    }
 
     int absoluteWithXAddressing(boolean alwaysExtraTick) {
         int a = absoluteAddressing();
@@ -947,7 +958,7 @@ public class Cpu {
     }
 
     void interrupt(int interruptType) {
-      //  printStatus("C:interrupt");
+        printStatus("C:interrupt");
         cpuTick();
         if (interruptType != BRK_INTERRUPT) {
             cpuTick();
@@ -971,7 +982,7 @@ public class Cpu {
     }
 
     void rts() {
-      //  printStatus("RTS");
+        printStatus("RTS");
         cpuTick();
         cpuTick();
         int v1 = pop() & 0xFF;
@@ -981,7 +992,7 @@ public class Cpu {
     }
 
     void rti() {
-      //  printStatus("RTI");
+        printStatus("RTI");
         plp();
         int value1 = pop() & 0xFF;
         int value2 = pop() & 0xFF;
@@ -989,93 +1000,114 @@ public class Cpu {
     }
 
     void jmp_ind() {
-      //  printStatus("C:JMP_I");
+        printStatus("C:JMP_I");
         int address = immediate16Addressing();
         int i = read16(address, false);
         PC = read16_d(i, (i & 0xFF00) | ((i + 1) % 0x100), false);
     }
 
     void jmp() {
-      //  printStatus("C:JMP");
+        printStatus("C:JMP");
         int address = immediate16Addressing();
         PC = read16(address, false);
     }
 
     void trToA(byte value) {
-      //  printStatus("C:TR");
+        printStatus("C:TR");
         A = value;
         updateNz(A);
         cpuTick();
     }
 
     void trToX(byte value) {
-      //  printStatus("C:TR");
+        printStatus("C:TR");
         X = value;
         updateNz(X);
         cpuTick();
     }
 
     void trToY(byte value) {
-      //  printStatus("C:TR");
+        printStatus("C:TR");
         Y = value;
         updateNz(Y);
         cpuTick();
     }
 
     void trX2S() {
-      //  printStatus("C:TXS");
+        printStatus("C:TXS");
         S = X;
         cpuTick();
     }
 
     void ldA(int address) {
         int p = read(address, false) & 0xFF;
-      //  printStatus("LD");
+        printStatus("LD");
         A = (byte) p;
         updateNz(A);
     }
 
     void ldX(int address) {
         int p = read(address, false) & 0xFF;
-      //  printStatus("LD");
+        printStatus("LD");
         X = (byte) p;
         updateNz(X);
     }
 
     void ldY(int address) {
         int p = read(address, false) & 0xFF;
-      //  printStatus("LD");
+        printStatus("LD");
         Y = (byte) p;
         updateNz(Y);
     }
 
     void st(byte value, int address) {
-
-      //  printStatus("ST $" + address + ":" + (value & 0xFF));
+        printStatus("ST $" + address + ":" + (value & 0xFF));
+        write(address, value);
+    }
+    
+    void stAbsX(byte value) {
+        cpuTick();
+        int address=absoluteWithXAddressing(false);
+        printStatus("ST $" + address + ":" + (value & 0xFF));
+        write(address, value);
+    }
+    
+    void stAbsY(byte value) {
+        cpuTick();
+        int address=absoluteWithYAddressing(false);
+        printStatus("ST $" + address + ":" + (value & 0xFF));
+        write(address, value);
+    }
+    
+    void stIZY(byte value) {
+        cpuTick();
+        int address=_indirectZYAddressing();
+        printStatus("ST $" + address + ":" + (value & 0xFF));
         write(address, value);
     }
 
     void nop() {
-      //  printStatus("C:nop");
+        printStatus("C:nop");
         cpuTick();
     }
 
     void br(int flag, int expectedFlagValue) {
-      //  printStatus("C:BR");
+        printStatus("C:BR");
         byte jumpOffset = read(immediateAddressing(), false);
         if (flag == expectedFlagValue) {
-       //     printStatus("C:BR JUMP");
+            printStatus("C:BR JUMP");
             cpuTick();
-            if (jumpCross(PC, jumpOffset)) {
+            //disable while debug MMC3 
+           /* if (jumpCross(PC, jumpOffset)) {
                 cpuTick();
             }
-
+*/
             PC += jumpOffset;
         }
     }
 
     void jsr() {
-      //  printStatus("C:JSR");
+        printStatus("C:JSR");
         int addressToPush = (PC & 0xFFFF) + 1;
         cpuTick();
         push((byte) ((addressToPush >> 8) & 0xFF));
@@ -1085,8 +1117,8 @@ public class Cpu {
 
     void adc(int address) {
         int p = read(address, false) & 0xFF;
-      //  printStatus("ADC");
-        short r = (short) ((A&0xFF) + p + C);
+        printStatus("ADC");
+        short r = (short) ((A & 0xFF) + p + C);
         updateCv(A, (byte) (p & 0xFF), r);
         A = (byte) r;
         updateNz(A);
@@ -1094,7 +1126,7 @@ public class Cpu {
 
     void cmp(byte r, int address) {
         int p = read(address, false) & 0xFF;
-      //  printStatus("CMP");
+        printStatus("CMP");
         int rValue = r & 0xFF;
         updateNz((byte) (rValue - p));
         C = rValue >= p ? 1 : 0;
@@ -1102,8 +1134,7 @@ public class Cpu {
 
     void sbc(int address) {
         int value = read(address, false) & 0xFF;
-     //   printStatus("SBC");
-        //final int value = ram.read(addr);//64
+        printStatus("SBC");
         int result;
         result = (A & 0xFF) - value - ((C == 1) ? 0 : 1);
 
@@ -1117,14 +1148,14 @@ public class Cpu {
 
     void and(int address) {
         int value = read(address, false) & 0xFF;
-      //  printStatus("AND");
+        printStatus("AND");
         A = (byte) ((A & 0xFF) & value);
         updateNz(A);
     }
 
     void bit(int address) {
         int value = read(address, false) & 0xFF;
-      //  printStatus("BIT");
+        printStatus("BIT");
         Z = ((A & 0xFF) & value) > 0 ? 0 : 1;
         N = (value & 0x80) > 0 ? 1 : 0;
         V = (value & 0x40) > 0 ? 1 : 0;
@@ -1132,26 +1163,26 @@ public class Cpu {
 
     void eor(int address) {
         int value = read(address, false) & 0xFF;
-      //  printStatus("EOR");
+        printStatus("EOR");
         A = (byte) ((A & 0xFF) ^ value);
         updateNz(A);
     }
 
     void ora(int address) {
         byte value = read(address, false);
-      //  printStatus("ORA");
+        printStatus("ORA");
         A = (byte) ((A & 0xFF) | value);
         updateNz(A);
     }
 
     void php() {
-      //  printStatus("C:PHP");
+        printStatus("C:PHP");
         cpuTick();
         push((byte) (getFlagByteValue() | 1 << 4));//B flag set
     }
 
     void plp() {
-      //  printStatus("C:PLP");
+        printStatus("C:PLP");
         cpuTick();
         cpuTick();
         byte flagValue = pop();
@@ -1161,7 +1192,7 @@ public class Cpu {
     }
 
     void pla() {
-     //   printStatus("C:PLA");
+        printStatus("C:PLA");
         cpuTick();
         cpuTick();
         A = pop();
@@ -1169,14 +1200,14 @@ public class Cpu {
     }
 
     void pha() {
-      //  printStatus("C:PHA");
+        printStatus("C:PHA");
         cpuTick();
         push(A);
     }
 
     void asl(int address) {
         byte value = read(address, false);
-      //  printStatus("ASL");
+        printStatus("ASL");
         C = (value & 0x80) == 0 ? 0 : 1;
         cpuTick();
         value = (byte) ((value & 0xFF) << 1);
@@ -1187,35 +1218,35 @@ public class Cpu {
 
     void lsr(int address) {
         byte value = read(address, false);
-      //  printStatus("LSR");
+        printStatus("LSR");
         C = value & 0x01;
-        cpuTick();
         value = (byte) ((value & 0xFF) >> 1);
 
         write(address, value);
+        cpuTick();
         updateNz(value);
     }
 
     void asl_a() {
-     //   printStatus("ASL_A");
+        printStatus("ASL_A");
         byte value = A;
         C = ((value & 0xFF) & 0x80) == 0 ? 0 : 1;
-        cpuTick();
         A = (byte) ((value & 0xFF) << 1);
         updateNz(A);
+        cpuTick();
     }
 
     void lsr_a() {
-      //  printStatus("LSR_A");
+        printStatus("LSR_A");
         byte value = A;
         C = value & 0x01;
-        cpuTick();
         A = (byte) ((value & 0xFF) >> 1);
         updateNz(A);
+        cpuTick();
     }
 
     void rol_a() {
-      //  printStatus("ROL_A");
+        printStatus("ROL_A");
         int c = C;
         C = (A & 0x80) == 0 ? 0 : 1;
         A = (byte) (((A & 0xFF) << 1) | c);
@@ -1224,7 +1255,7 @@ public class Cpu {
     }
 
     void ror_a() {
-     //   printStatus("ROR_A");
+        printStatus("ROR_A");
         int c = C << 7;
         C = A & 0x01;
         A = (byte) (c | ((A & 0xFF) >> 1));
@@ -1234,11 +1265,11 @@ public class Cpu {
 
     void rol(int address) {
         byte value = read(address, false);
-      //  printStatus("ROL");
+        printStatus("ROL");
         int c = C;
         C = ((value & 0x80) == 0) ? 0 : 1;
-        cpuTick();
 
+        cpuTick();
         value = (byte) (((value & 0xFF) << 1) | c);
         write(address, value);
         updateNz(value);
@@ -1246,7 +1277,7 @@ public class Cpu {
 
     void ror(int address) {
         byte value = read(address, false);
-      //  printStatus("ROR");
+        printStatus("ROR");
         int c = C << 7;
         C = value & 0x1;
         cpuTick();
@@ -1258,7 +1289,7 @@ public class Cpu {
 
     void dec(int address) {
         byte value = read(address, false);
-      //  printStatus("DEC");
+        printStatus("DEC");
         cpuTick();
         value--;
 
@@ -1267,36 +1298,36 @@ public class Cpu {
     }
 
     void decX() {
-      //  printStatus("DEC");
+        printStatus("DEX");
         X--;
-        cpuTick();
         updateNz(X);
+        cpuTick();
     }
 
     void incX() {
-     //   printStatus("INC");
+        printStatus("INX");
         X++;
-        cpuTick();
         updateNz(X);
+        cpuTick();
     }
 
     void decY() {
-      //  printStatus("DEC");
+        printStatus("DEX");
         Y--;
-        cpuTick();
         updateNz(Y);
+        cpuTick();
     }
 
     void incY() {
-      //  printStatus("INC");
+        printStatus("INX");
         Y++;
-        cpuTick();
         updateNz(Y);
+        cpuTick();
     }
 
     void inc(int address) {
         byte value = read(address, false);
-       // printStatus("INC");
+        printStatus("INC");
         cpuTick();
         value++;
 
@@ -1306,7 +1337,6 @@ public class Cpu {
 
     void illegalLax(int address) {
         int p = read(address, false) & 0xFF;
-        //cpuTick();
         A = (byte) p;
         X = (byte) p;
         updateNz(A);
@@ -1401,18 +1431,28 @@ public class Cpu {
 
     public void runFrame() {
         remainingCycles += TOTAL_CYCLES;
-        while (remainingCycles > 0) {
-            if (nmi) {
-                interrupt(NMI_INTERRUPT);
-            } else if (irq && I != 0) {
-                interrupt(IRQ_INTERRUPT);
-            }
+        int lastPC = 0;
+        try {
+            while (remainingCycles > 0) {
+                lastPC = PC;
+                if (lastPC == 51533) {
+                    disableDebug();
+                }
+                if (nmi) {
+                    interrupt(NMI_INTERRUPT);
+                } else if (irq && I == 0) {
+                    interrupt(IRQ_INTERRUPT);
+                }
 
-            executeOneInstruction();
+                executeOneInstruction();
+            }
+        } catch (Exception ex) {
+            System.err.println("Error while executing instruction " + lastPC);
+            ex.printStackTrace();
         }
     }
-
-    public void powerUp() {
+/*
+    static {
         try {
             System.setProperty("line.separator", "\n");
             debugLogStream = new PrintStream(new BufferedOutputStream(new FileOutputStream("c:/temp/cpuJava.log")));
@@ -1420,18 +1460,21 @@ public class Cpu {
             ex.printStackTrace();
             throw new RuntimeException(ex);
         }
+    }
+*/
+    public void powerUp() {
         remainingCycles = 0;
         setFlagsFromByteValue((byte) 0x4);
         A = X = Y = 0;
-        S = (byte) 0xFD;
+        S = (byte) 0x0;
         PC = 0x34;
         Arrays.fill(ram, (byte) 0);
         nmi = irq = false;
         interrupt(RESET_INTERRUPT);
     }
 
-    boolean allowDebug = true;
-    PrintStream debugLogStream;
+    boolean allowDebug = false;
+    static PrintStream debugLogStream;
     boolean printToStdout = false;
 
     void disableDebug() {
@@ -1445,17 +1488,25 @@ public class Cpu {
 
     int printIndex = -1;
 
-   /* void printStatus(String str) {
+    public void printStatus(String str) {
         if (allowDebug) {
             printIndex++;
-            if (printIndex == 6436235) {
-                int x = 0;
-                //printToStdout=true;
+            if (printIndex == 257189) {
+                //debug set apu mock value
+                apu.setMock((byte)11);
             }
-            debugLogStream.println(printIndex + " " + str);
-            if (printToStdout) {
-                System.out.println(printIndex + " " + str);
+            
+            if (printIndex == 2059381) {
+                int x=0;
+             //   printToStdout=true;
+                
             }
+            String message=String.format("%d %s PC=%d A=%d X=%d Y=%d S=%d P=%d", printIndex, str, PC, A & 0xFF, X & 0xFF, Y & 0xFF, S & 0xFF, getFlagByteValue() & 0xFF);
+            debugLogStream.println(message);
+            if(printToStdout){
+                System.out.println(message);
+            }
+
         }
-    }*/
+    }
 }
